@@ -1,0 +1,9 @@
+[submodule "deps/findwdk"]
+	path = deps/findwdk
+	url = https://github.com/SergiusTheBest/FindWDK.git
+[submodule "deps/zydis"]
+	path = deps/zydis
+	url = https://github.com/zyantific/zydis.git
+[submodule "deps/phnt"]
+	path = deps/phnt
+	url = https://github.com/processhacker/phnt.git
