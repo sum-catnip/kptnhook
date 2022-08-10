@@ -26,6 +26,7 @@ push        ebp
 mov         ebp, esp ; frame pointer points to start of args
 add         ebp, ptrsz
 pushad ; we dont know what the target exe might expect from the windows loader environment
+; so just save the entire environment
 
 ; traverse the teb/peb to get the kernel32 base address
 
@@ -38,11 +39,12 @@ mov         ebx, [ecx] ; first entry is the exe image itself
 mov         ebx, [ebx + listentry.flink] ; next entry is ntdll
 cmp         ebx, ecx ; found end of list?
 je          .exit
-mov         ebx, [ebx + listentry.flink] ; and now kernel32
-cmp         ebx, ecx ; end of list?
-je          .exit
+; mov         ebx, [ebx + listentry.flink] ; and now kernel32
+; cmp         ebx, ecx ; end of list?
+; je          .exit
+
 ; difference between dllbase field and flink (where we land)
-; so ebx now holds the kernel32 base address
+; so ebx now holds the ntdll base address
 mov         ebx, [ebx + ldrentry.base - ldrentry.links]
 
 ; eip relative access on x86-32asm
@@ -55,18 +57,32 @@ call        resolve_export
 
 push        eax ; save virtualprotect addr for second call
 
+; save original func ptr (modified in vprotect call)
+push        dword [ebp]
+; save original code size
+push        dword [ebp + ptrsz * 3]
+
 ; make original func writable
 push        0 ; space for old protect
 push        esp ; old protect ptr
 push        4 ; PAGE_READWRITE
-push        dword [ebp + ptrsz * 3] ; original code size (param)
-push        dword [ebp] ; original func
+lea         edx, [ebp + ptrsz * 3] ; original code size * 
+push        edx
+push        ebp ; original func *
+push        -1 ; current process pseudo-handle
 call        eax
 
 test        eax, eax
 pop         edx ; old protect
+; restore original code size
+pop         eax
+mov         dword [ebp + ptrsz * 3], eax
+; restore original func ptr
+pop         eax
+mov         dword [ebp], eax
 pop         eax ; saved virtual protect addr
-jz          .exit
+
+jnz          .exit
 
 ; restore original code (memcpy)
 mov         ecx, [ebp + ptrsz * 3] ; original code size (param)
@@ -77,17 +93,47 @@ rep         movsb ; memcpy
 
 ; restore previous protection
 
+; save original func ptr (modified in vprotect call)
+push        dword [ebp]
+; save original code size
+push        dword [ebp + ptrsz * 3]
+
 push        0 ; space for old protect
 push        esp ; old protect ptr
 push        edx ; new protect (previous value)
-push        dword [ebp + ptrsz * 3] ; original code size (param)
-push        dword [ebp] ; original func
+lea         edx, [ebp + ptrsz * 3] ; original code size * 
+push        edx
+push        ebp ; original func *
+push        -1 ; current process pseudo-handle
 call        eax
 
 add         esp, ptrsz ; remove old page protection
 
 test        eax, eax
-jz          .exit
+
+; restore original code size
+pop         eax
+mov         dword [ebp + ptrsz * 3], eax
+; restore original func ptr
+pop         eax
+mov         dword [ebp], eax
+
+jnz          .exit
+
+; check if k32 is loaded
+; if not: exit
+mov         edx, fs:[teb.peb]  ; PEB from TEB
+mov         edx, [edx + peb.ldr] ; LDR from PEB
+; the address of the pointer to the first entry
+; last entry will point to this so we can check if the list is exhausted
+lea         ecx, [edx + ldr.modules + listentry.flink] ; addressof modules pointer
+mov         edx, [ecx] ; first entry is the exe image itself
+mov         edx, [edx + listentry.flink] ; next entry is ntdll
+cmp         edx, ecx ; found end of list?
+je          .exit
+mov         edx, [edx + listentry.flink] ; and now kernel32
+cmp         edx, ecx ; end of list?
+je          .exit
 
 ; load library
 
@@ -101,8 +147,14 @@ push        ebx
 call        resolve_export
 
 mov         ecx, [ebp + ptrsz * 2]
+push        0
+push        esp ; return base address
 push        ecx ; dllname
+push        0 ; characteristics
+push        0 ; search path
 call        eax ; loadlibrarya
+
+pop         eax ; dump return base addr
 
 .exit:
 popad
@@ -168,8 +220,8 @@ pop         esp
 ret         3 * ptrsz ; cleanup arguments
 
 ; static data "segment"
-load_lib_str        db      "LoadLibraryA", 0
+load_lib_str        db      "LdrLoadDll", 0
 sz_load_lib_str     equ     $ - load_lib_str
 
-vprotect_str        db      "VirtualProtect", 0
+vprotect_str        db      "NtProtectVirtualMemory", 0
 sz_vprotect_str     equ     $ - vprotect_str

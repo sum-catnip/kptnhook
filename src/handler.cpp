@@ -81,7 +81,6 @@ NTSTATUS on_create_proc_status(HANDLE parent_pid, HANDLE pid, BOOLEAN create) {
 
 	// get entrypoint va
 	if (a.b == bit::x32) {
-		return status;
 		auto nt = addroffset(IMAGE_NT_HEADERS32, base, base->e_lfanew);
 		entrypoint = addroffset(void, base, nt->OptionalHeader.AddressOfEntryPoint);
 	}

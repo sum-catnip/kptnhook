@@ -47,8 +47,19 @@ void hook32(void* func, void* target) {
 	target = addroffset(void, target, STUB_SIZE32);
 
 	void* module_file = target;
-	const char module_file_str[] = "gi_agent.dll";
-	write_str(&target, module_file_str);
+	const wchar_t module_file_str[] = L"gi_agent.dll";
+	write_wstr(&target, module_file_str);
+
+	// write UNICODE_STRING for module_file
+	void* module_file_unicode = target;
+	UNICODE_STRING32 module_file_unicode_str;
+	// length (not including null terminator)
+	module_file_unicode_str.Length = sizeof(module_file_str) - sizeof(module_file_str[0]);
+	// maximum length (including null terminator)
+	module_file_unicode_str.MaximumLength = sizeof(module_file_str);
+	// buffer; ptr to actual wstr
+	module_file_unicode_str.Buffer = towow64(module_file);
+	write_type<UNICODE_STRING32>(&target, module_file_unicode_str);
 
 	// overwrite original code
 	// jmp shellcode
@@ -63,8 +74,9 @@ void hook32(void* func, void* target) {
 	write_type<UINT32>(&target, STUB_SIZE32);
 
 	write_bytes(&target, { 0x68 }); // push
-	write_type<UINT32>(&target, towow64(module_file));
+	write_type<UINT32>(&target, towow64(module_file_unicode));
 
+	// not needed anymore but im keeping it so i dont have to change the shellcode :p
 	write_bytes(&target, { 0x68 }); // push
 	write_type<UINT32>(&target, sizeof(module_file_str));
 
@@ -93,14 +105,14 @@ void hook64(void* func, void* target) {
 
 	// write UNICODE_STRING for module_file
 	void* module_file_unicode = target;
-	UNICODE_STRING module_file_unicode_str;
+	UNICODE_STRING64 module_file_unicode_str;
 	// length (not including null terminator)
 	module_file_unicode_str.Length = sizeof(module_file_str) - sizeof(module_file_str[0]);
 	// maximum length (including null terminator)
 	module_file_unicode_str.MaximumLength = sizeof(module_file_str);
 	// buffer; ptr to actual wstr
-	module_file_unicode_str.Buffer = reinterpret_cast<PWCH>(module_file);
-	write_type<UNICODE_STRING>(&target, module_file_unicode_str);
+	module_file_unicode_str.Buffer = reinterpret_cast<ULONGLONG>(module_file);
+	write_type<UNICODE_STRING64>(&target, module_file_unicode_str);
 
 	// shellcode stub
 	void* shellcode_stub = target;

@@ -115,7 +115,7 @@ test        rax, rax
 jnz          .exit
 
 ; check if k32 is loaded
-; if not; exit
+; if not: exit
 mov         rdx, gs:[teb.peb]  ; PEB from TEB
 test        rdx, rdx
 jz          .exit
@@ -137,6 +137,8 @@ je          .exit
 mov         rdx, [rdx + listentry.flink] ; kernel32
 cmp         rdx, rcx ; end of list?
 je          .exit
+
+; load library
 
 mov         rcx, sz_load_lib_str
 lea         rdx, [load_lib_str]
