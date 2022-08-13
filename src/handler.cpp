@@ -6,7 +6,6 @@
 #include "hook.h"
 #include "known_dlls.h"
 #include "pointers.h"
-#include "drvglobal.h"
 #include "arch.h"
 
 #include <ntimage.h>
@@ -18,9 +17,6 @@ ULONG init_lazy(PRTL_RUN_ONCE run_once, PVOID a, PVOID* ctx) {
 	UNREFERENCED_PARAMETER(run_once);
 	UNREFERENCED_PARAMETER(ctx);
 	NTSTATUS status = STATUS_SUCCESS;
-
-	log_debug("reg path: %wZ", GLOBAL.registry_path);
-	log_debug("drv object: %p", GLOBAL.obj);
 
 	// init known dlls
 	for (const UNICODE_STRING& filename : KNOWN_DLLS)
