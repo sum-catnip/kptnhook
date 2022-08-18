@@ -2,7 +2,7 @@
 #include <ntifs.h>
 
 constexpr UNICODE_STRING KNOWN_DLLS[] = {
-	RTL_CONSTANT_STRING(L"gi_agent.dll")
+	RTL_CONSTANT_STRING(L"pirt.dll")
 };
 
 void on_image_load(PUNICODE_STRING img_name, HANDLE proc, PIMAGE_INFO info);

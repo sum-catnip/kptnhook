@@ -47,7 +47,7 @@ void hook32(void* func, void* target) {
 	target = addroffset(void, target, STUB_SIZE32);
 
 	void* module_file = target;
-	const wchar_t module_file_str[] = L"gi_agent.dll";
+	const wchar_t module_file_str[] = L"pirt.dll";
 	write_wstr(&target, module_file_str);
 
 	// write UNICODE_STRING for module_file
@@ -100,7 +100,7 @@ void hook64(void* func, void* target) {
 	target = addroffset(void, target, STUB_SIZE64);
 
 	void* module_file = target;
-	const wchar_t module_file_str[] = L"gi_agent.dll";
+	const wchar_t module_file_str[] = L"pirt.dll";
 	write_wstr(&target, module_file_str);
 
 	// write UNICODE_STRING for module_file
