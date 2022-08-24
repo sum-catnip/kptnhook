@@ -21,15 +21,16 @@ pub fn output_debug_string(msg: impl AsRef<OsStr>) {
     unsafe { OutputDebugStringW(msg_wide.as_ptr()); }
 }
 
-static EARLY_LOGGER: EarlyLogger = EarlyLogger {};
-static LOGGER: PirtLogger = PirtLogger {};
-
-fn init() {
-    log::set_logger(&EarlyLogger);
+fn init() -> Result<(), String> {
+    let early = EarlyLogger::new();
+    log::set_boxed_logger(Box::new(early))
+        .map_err(|e| format!("kptnhook error initializing logging: {}", e.to_string()))?;
 }
 
 struct PirtLogger;
-struct EarlyLogger;
+struct EarlyLogger {
+    level: Mutex<Level>
+}
 
 impl Log for PirtLogger {
     fn enabled(&self, metadata: &log::Metadata) -> bool {
@@ -42,6 +43,12 @@ impl Log for PirtLogger {
 
     fn flush(&self) {
         todo!()
+    }
+}
+
+impl EarlyLogger {
+    pub fn new() -> Self {
+        EarlyLogger { level: Mutex::new(Level::Trace) }
     }
 }
 
