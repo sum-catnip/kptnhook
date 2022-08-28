@@ -3,7 +3,7 @@ use crate::procenv;
 use std::fmt::Display;
 use std::os::windows::ffi::OsStrExt;
 use std::ffi::OsStr;
-use std::sync::RwLock;
+use std::sync::{ RwLock, RwLockReadGuard };
 use std::process;
 use std::env;
 
@@ -52,20 +52,31 @@ fn log_dbg(msg: impl Display, level: Level) {
 }
 
 pub(crate) struct FileLogCfg {
-
+    level: Level
 }
 
 pub(crate) struct DbgLogCfg {
-
+    level: Level
 }
 
 pub(crate) struct LoggingCfg {
-    level: Level
+    level: Level,
+    dbg: DbgLogCfg,
+    file: FileLogCfg
 }
 
 #[derive(Default)]
 struct PirtLogger {
     cfg: RwLock<Option<LoggingCfg>>
+}
+
+impl PirtLogger {
+    fn cfg(&self) -> RwLockReadGuard<Option<LoggingCfg>> {
+        self.cfg.read().unwrap_or_else(|_| {
+            log_dbg("logging lock is poisoned, check logs for further errors", Level::Error);
+            panic!("logging lock is poisoned, check logs for further errors");
+        })
+    }
 }
 
 impl Log for PirtLogger {
@@ -84,7 +95,16 @@ impl Log for PirtLogger {
     }
 
     fn log(&self, record: &log::Record) {
-        todo!()
+        if let Some(lock) = &*self.cfg() {
+            if lock.dbg.level >= record.level() {
+                log_dbg(record.args(), record.level()); 
+            }
+
+            if lock.file.level >= record.level() {
+                todo!();
+            }
+        }
+        else { log_dbg(record.args(), record.level()); }
     }
 
     fn flush(&self) {
